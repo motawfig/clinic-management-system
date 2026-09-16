@@ -7,6 +7,9 @@ import java.util.List;
 
 /**
  * Repository interface for {@link Appointment} entities.
+ * <p>
+ * هذه الواجهة تحدد عمليات القراءة المطلوبة لقواعد المواعيد دون فرض JDBC implementation.
+ * No production JDBC implementation exists in the current codebase.
  */
 public interface AppointmentRepository extends GenericRepository<Appointment, Integer> {
 
@@ -20,6 +23,9 @@ public interface AppointmentRepository extends GenericRepository<Appointment, In
 
     /**
      * Finds all appointments for a given doctor.
+     * <p>
+     * هذه الدالة مهمة لفحص التعارض لأنها تعزل جدول مواعيد طبيب واحد.
+     * Conflict detection depends on this method returning the selected doctor's appointments.
      *
      * @param doctorId the doctor's identifier
      * @return list of appointments

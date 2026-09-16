@@ -19,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for {@link AppointmentService}.
+ * <p>
+ * تغطي هذه المجموعة قواعد SMR-001 الأساسية: الحجز الصحيح، تعارض نفس الطبيب،
+ * اختلاف الطبيب، حدود الفترات، تصفية الحالات، واستبعاد الموعد الحالي أثناء التعديل.
  */
 class AppointmentServiceTest {
 
@@ -87,6 +90,8 @@ class AppointmentServiceTest {
         InMemoryAppointmentRepository repository = new InMemoryAppointmentRepository();
         AppointmentService service = new AppointmentService(repository);
         repository.save(appointment(1, doctor(1), BASE_TIME, 30, AppointmentStatus.SCHEDULED));
+        // نهاية الموعد الأول تساوي بداية الموعد الثاني؛ strict inequalities تسمح بذلك.
+        // Boundary touching is not an overlap for half-open intervals.
         Appointment appointment = appointment(2, doctor(1), BASE_TIME.plusMinutes(30), 30, AppointmentStatus.SCHEDULED);
 
         Appointment saved = service.scheduleAppointment(appointment);
@@ -147,6 +152,8 @@ class AppointmentServiceTest {
         AppointmentService service = new AppointmentService(repository);
         repository.save(appointment(1, doctor(1), BASE_TIME, 30, AppointmentStatus.SCHEDULED));
         repository.save(appointment(2, doctor(1), BASE_TIME.plusMinutes(60), 30, AppointmentStatus.SCHEDULED));
+        // تعديل الموعد الثاني إلى فترة متداخلة يجب أن يفشل قبل تغيير السجل المخزن.
+        // The stored value below verifies that update() was not reached after conflict detection.
         Appointment conflictingUpdate = appointment(2, doctor(1), BASE_TIME.plusMinutes(15), 30, AppointmentStatus.SCHEDULED);
 
         assertThrows(AppointmentConflictException.class, () -> service.updateAppointment(conflictingUpdate));

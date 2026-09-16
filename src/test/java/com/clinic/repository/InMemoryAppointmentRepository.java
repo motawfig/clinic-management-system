@@ -10,7 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * In-memory appointment repository for tests.
+ * مستودع اختباري فقط يحاكي AppointmentRepository داخل الذاكرة.
+ * This is a test double, not the production persistence layer.
  */
 public class InMemoryAppointmentRepository implements AppointmentRepository {
 

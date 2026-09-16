@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for {@link Appointment}.
+ * <p>
+ * تركز اختبارات الموعد على سلامة العلاقات الأساسية والمدة لأنها تدخل في حساب التعارض.
  */
 class AppointmentTest {
 

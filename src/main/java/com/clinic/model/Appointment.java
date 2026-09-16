@@ -5,16 +5,44 @@ import java.util.Objects;
 
 /**
  * Represents a scheduled appointment between a patient and a doctor.
+ * <p>
+ * يربط هذا الكيان بين المريض والطبيب ووقت الموعد وحالته. The duration is part of
+ * the business model because conflict detection compares time intervals, not only
+ * identical start times.
  */
 public class Appointment {
 
+    /**
+     * المدة الافتراضية للموعد عند استخدام الباني القديم.
+     * Default appointment length remains 30 minutes for backward compatibility.
+     */
     private static final int DEFAULT_DURATION_MINUTES = 30;
 
     private int id;
+    /**
+     * علاقة الموعد بالمريض؛ يجب أن يكون لكل موعد مريض معروف.
+     * Appointment-to-patient relationship.
+     */
     private Patient patient;
+    /**
+     * علاقة الموعد بالطبيب؛ يستخدم الطبيب لعزل جدول المواعيد أثناء فحص التعارض.
+     * Appointment-to-doctor relationship used for doctor-scoped scheduling.
+     */
     private Doctor doctor;
+    /**
+     * وقت بداية الموعد.
+     * The start timestamp forms the left side of the appointment interval.
+     */
     private LocalDateTime appointmentDateTime;
+    /**
+     * مدة الموعد بالدقائق ويجب أن تكون أكبر من صفر.
+     * Used with appointmentDateTime to build the interval [start, start + durationMinutes).
+     */
     private int durationMinutes = DEFAULT_DURATION_MINUTES;
+    /**
+     * حالة الموعد تحدد هل يحجز وقت الطبيب أم لا.
+     * AppointmentStatus is interpreted by AppointmentService for conflict blocking.
+     */
     private AppointmentStatus status;
     private String notes;
 
@@ -119,6 +147,12 @@ public class Appointment {
         return durationMinutes;
     }
 
+    /**
+     * يحافظ على شرط سلامة المدة: لا يمكن أن تكون صفرا أو سالبة.
+     *
+     * @param durationMinutes appointment duration in minutes; must be positive
+     * @throws IllegalArgumentException if durationMinutes is zero or negative
+     */
     public void setDurationMinutes(int durationMinutes) {
         if (durationMinutes <= 0) {
             throw new IllegalArgumentException("Duration minutes must be greater than zero");

@@ -5,6 +5,9 @@ import java.util.Optional;
 
 /**
  * Generic repository interface defining common CRUD operations.
+ * <p>
+ * تعتمد الخدمات على هذه الواجهات لا على تفاصيل قاعدة البيانات. This keeps the
+ * service layer testable and leaves production persistence as a replaceable boundary.
  *
  * @param <T>  the entity type
  * @param <ID> the identifier type

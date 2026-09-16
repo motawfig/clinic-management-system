@@ -1,1 +1,22 @@
-target/ 
+# Build output
+target/
+
+# IDE — IntelliJ IDEA
+.idea/
+*.iml
+
+# IDE — Eclipse
+.classpath
+.project
+.settings/
+
+# IDE — VS Code
+.vscode/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Environment files
+.env
+.env.*

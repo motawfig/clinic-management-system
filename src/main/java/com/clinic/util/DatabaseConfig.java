@@ -10,6 +10,9 @@ import java.util.Properties;
 /**
  * Manages database configuration and connections.
  * Reads settings from {@code db.properties} on the classpath.
+ * <p>
+ * هذه أداة تهيئة فقط في النسخة الحالية. Production repositories do not currently
+ * call this class, so schema/configuration exists without a wired persistence layer.
  */
 public class DatabaseConfig {
 
