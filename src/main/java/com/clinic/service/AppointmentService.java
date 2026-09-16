@@ -35,6 +35,12 @@ public class AppointmentService {
      * @return the saved appointment
      */
     public Appointment scheduleAppointment(Appointment appointment) {
+        ensureNoAppointmentConflict(appointment, false);
+
+        return appointmentRepository.save(appointment);
+    }
+
+    private void ensureNoAppointmentConflict(Appointment appointment, boolean excludeCurrentAppointment) {
         if (appointment == null) {
             throw new IllegalArgumentException("Appointment must not be null");
         }
@@ -50,6 +56,9 @@ public class AppointmentService {
         LocalDateTime newEnd = newStart.plusMinutes(appointment.getDurationMinutes());
 
         for (Appointment existingAppointment : appointmentRepository.findByDoctorId(doctorId)) {
+            if (excludeCurrentAppointment && existingAppointment.getId() == appointment.getId()) {
+                continue;
+            }
             if (!isBlockingStatus(existingAppointment.getStatus())) {
                 continue;
             }
@@ -61,8 +70,6 @@ public class AppointmentService {
                 throw new AppointmentConflictException("Appointment conflicts with an existing appointment");
             }
         }
-
-        return appointmentRepository.save(appointment);
     }
 
     private boolean isBlockingStatus(AppointmentStatus status) {
@@ -100,6 +107,8 @@ public class AppointmentService {
      * @return the updated appointment
      */
     public Appointment updateAppointment(Appointment appointment) {
+        ensureNoAppointmentConflict(appointment, true);
+
         return appointmentRepository.update(appointment);
     }
 
