@@ -35,12 +35,37 @@ public class AppointmentService {
      * @return the saved appointment
      */
     public Appointment scheduleAppointment(Appointment appointment) {
-        ensureNoAppointmentConflict(appointment, false);
+        ensureNoAppointmentConflictForScheduling(appointment);
 
         return appointmentRepository.save(appointment);
     }
 
-    private void ensureNoAppointmentConflict(Appointment appointment, boolean excludeCurrentAppointment) {
+    private void ensureNoAppointmentConflictForScheduling(Appointment appointment) {
+        ensureNoAppointmentConflict(appointment, null);
+    }
+
+    private void ensureNoAppointmentConflictForUpdate(Appointment appointment) {
+        ensureNoAppointmentConflict(appointment, appointment);
+    }
+
+    private void ensureNoAppointmentConflict(Appointment appointment, Appointment currentAppointment) {
+        validateAppointmentForConflictCheck(appointment);
+
+        int doctorId = appointment.getDoctor().getId();
+        LocalDateTime newStart = appointment.getAppointmentDateTime();
+        LocalDateTime newEnd = calculateEndTime(appointment);
+
+        for (Appointment existingAppointment : appointmentRepository.findByDoctorId(doctorId)) {
+            if (isCurrentAppointment(existingAppointment, currentAppointment)) {
+                continue;
+            }
+            if (conflictsWith(newStart, newEnd, existingAppointment)) {
+                throw new AppointmentConflictException("Appointment conflicts with an existing appointment");
+            }
+        }
+    }
+
+    private void validateAppointmentForConflictCheck(Appointment appointment) {
         if (appointment == null) {
             throw new IllegalArgumentException("Appointment must not be null");
         }
@@ -50,26 +75,25 @@ public class AppointmentService {
         if (appointment.getAppointmentDateTime() == null) {
             throw new IllegalArgumentException("Appointment date and time must not be null");
         }
+    }
 
-        int doctorId = appointment.getDoctor().getId();
-        LocalDateTime newStart = appointment.getAppointmentDateTime();
-        LocalDateTime newEnd = newStart.plusMinutes(appointment.getDurationMinutes());
+    private boolean isCurrentAppointment(Appointment existingAppointment, Appointment currentAppointment) {
+        return currentAppointment != null && existingAppointment.getId() == currentAppointment.getId();
+    }
 
-        for (Appointment existingAppointment : appointmentRepository.findByDoctorId(doctorId)) {
-            if (excludeCurrentAppointment && existingAppointment.getId() == appointment.getId()) {
-                continue;
-            }
-            if (!isBlockingStatus(existingAppointment.getStatus())) {
-                continue;
-            }
-
-            LocalDateTime existingStart = existingAppointment.getAppointmentDateTime();
-            LocalDateTime existingEnd = existingStart.plusMinutes(existingAppointment.getDurationMinutes());
-
-            if (appointmentsOverlap(newStart, newEnd, existingStart, existingEnd)) {
-                throw new AppointmentConflictException("Appointment conflicts with an existing appointment");
-            }
+    private boolean conflictsWith(LocalDateTime newStart, LocalDateTime newEnd, Appointment existingAppointment) {
+        if (!isBlockingStatus(existingAppointment.getStatus())) {
+            return false;
         }
+
+        LocalDateTime existingStart = existingAppointment.getAppointmentDateTime();
+        LocalDateTime existingEnd = calculateEndTime(existingAppointment);
+
+        return appointmentsOverlap(newStart, newEnd, existingStart, existingEnd);
+    }
+
+    private LocalDateTime calculateEndTime(Appointment appointment) {
+        return appointment.getAppointmentDateTime().plusMinutes(appointment.getDurationMinutes());
     }
 
     private boolean isBlockingStatus(AppointmentStatus status) {
@@ -107,7 +131,7 @@ public class AppointmentService {
      * @return the updated appointment
      */
     public Appointment updateAppointment(Appointment appointment) {
-        ensureNoAppointmentConflict(appointment, true);
+        ensureNoAppointmentConflictForUpdate(appointment);
 
         return appointmentRepository.update(appointment);
     }
