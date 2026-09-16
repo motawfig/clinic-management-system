@@ -3,7 +3,7 @@
 **Authors:**
 
 - Engineer Mohammed Abu Hadi — المهندس محمد أبوهادي
-- Engineer Hazem Al-Baqli — المهندس حازم البقلي
+- Engineer Hazem Al-Baqli — المهندس حازم البلقي
 
 ---
 
