@@ -1,9 +1,12 @@
 package com.clinic.service;
 
+import com.clinic.exception.AppointmentConflictException;
 import com.clinic.model.Appointment;
+import com.clinic.model.AppointmentStatus;
 import com.clinic.repository.AppointmentRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,7 +35,43 @@ public class AppointmentService {
      * @return the saved appointment
      */
     public Appointment scheduleAppointment(Appointment appointment) {
+        if (appointment == null) {
+            throw new IllegalArgumentException("Appointment must not be null");
+        }
+        if (appointment.getDoctor() == null) {
+            throw new IllegalArgumentException("Appointment doctor must not be null");
+        }
+        if (appointment.getAppointmentDateTime() == null) {
+            throw new IllegalArgumentException("Appointment date and time must not be null");
+        }
+
+        int doctorId = appointment.getDoctor().getId();
+        LocalDateTime newStart = appointment.getAppointmentDateTime();
+        LocalDateTime newEnd = newStart.plusMinutes(appointment.getDurationMinutes());
+
+        for (Appointment existingAppointment : appointmentRepository.findByDoctorId(doctorId)) {
+            if (!isBlockingStatus(existingAppointment.getStatus())) {
+                continue;
+            }
+
+            LocalDateTime existingStart = existingAppointment.getAppointmentDateTime();
+            LocalDateTime existingEnd = existingStart.plusMinutes(existingAppointment.getDurationMinutes());
+
+            if (appointmentsOverlap(newStart, newEnd, existingStart, existingEnd)) {
+                throw new AppointmentConflictException("Appointment conflicts with an existing appointment");
+            }
+        }
+
         return appointmentRepository.save(appointment);
+    }
+
+    private boolean isBlockingStatus(AppointmentStatus status) {
+        return status == AppointmentStatus.SCHEDULED || status == AppointmentStatus.CONFIRMED;
+    }
+
+    private boolean appointmentsOverlap(LocalDateTime newStart, LocalDateTime newEnd,
+                                        LocalDateTime existingStart, LocalDateTime existingEnd) {
+        return newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart);
     }
 
     /**
