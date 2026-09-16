@@ -8,10 +8,13 @@ import java.util.Objects;
  */
 public class Appointment {
 
+    private static final int DEFAULT_DURATION_MINUTES = 30;
+
     private int id;
     private Patient patient;
     private Doctor doctor;
     private LocalDateTime appointmentDateTime;
+    private int durationMinutes = DEFAULT_DURATION_MINUTES;
     private AppointmentStatus status;
     private String notes;
 
@@ -35,8 +38,27 @@ public class Appointment {
     public Appointment(int id, Patient patient, Doctor doctor,
                        LocalDateTime appointmentDateTime, AppointmentStatus status,
                        String notes) {
+        this(id, patient, doctor, appointmentDateTime, DEFAULT_DURATION_MINUTES, status, notes);
+    }
+
+    /**
+     * Creates a new Appointment.
+     *
+     * @param id                  unique identifier
+     * @param patient             the patient (must not be null)
+     * @param doctor              the doctor (must not be null)
+     * @param appointmentDateTime date and time of the appointment
+     * @param durationMinutes     duration in minutes (must be greater than zero)
+     * @param status              current status
+     * @param notes               additional notes
+     * @throws IllegalArgumentException if patient or doctor is null, or durationMinutes is not positive
+     */
+    public Appointment(int id, Patient patient, Doctor doctor,
+                       LocalDateTime appointmentDateTime, int durationMinutes,
+                       AppointmentStatus status, String notes) {
         setPatient(patient);
         setDoctor(doctor);
+        setDurationMinutes(durationMinutes);
         this.id = id;
         this.appointmentDateTime = appointmentDateTime;
         this.status = status;
@@ -93,6 +115,17 @@ public class Appointment {
         this.appointmentDateTime = appointmentDateTime;
     }
 
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(int durationMinutes) {
+        if (durationMinutes <= 0) {
+            throw new IllegalArgumentException("Duration minutes must be greater than zero");
+        }
+        this.durationMinutes = durationMinutes;
+    }
+
     public AppointmentStatus getStatus() {
         return status;
     }
@@ -129,6 +162,7 @@ public class Appointment {
                 ", patient=" + (patient != null ? patient.getFullName() : "null") +
                 ", doctor=" + (doctor != null ? doctor.getFullName() : "null") +
                 ", dateTime=" + appointmentDateTime +
+                ", durationMinutes=" + durationMinutes +
                 ", status=" + status +
                 ", notes='" + notes + '\'' +
                 '}';

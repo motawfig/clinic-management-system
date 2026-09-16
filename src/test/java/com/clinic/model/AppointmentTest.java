@@ -36,8 +36,46 @@ class AppointmentTest {
         assertEquals(patient, appt.getPatient());
         assertEquals(doctor, appt.getDoctor());
         assertEquals(dateTime, appt.getAppointmentDateTime());
+        assertEquals(30, appt.getDurationMinutes());
         assertEquals(AppointmentStatus.SCHEDULED, appt.getStatus());
         assertEquals("Initial consultation", appt.getNotes());
+    }
+
+    @Test
+    @DisplayName("Appointment accepts positive duration")
+    void testPositiveDuration() {
+        Patient patient = createTestPatient();
+        Doctor doctor = createTestDoctor();
+        LocalDateTime dateTime = LocalDateTime.of(2025, 3, 15, 10, 30);
+
+        Appointment appt = new Appointment(1, patient, doctor, dateTime, 45,
+                AppointmentStatus.SCHEDULED, "Initial consultation");
+
+        assertEquals(45, appt.getDurationMinutes());
+
+        appt.setDurationMinutes(60);
+        assertEquals(60, appt.getDurationMinutes());
+    }
+
+    @Test
+    @DisplayName("Appointment rejects zero duration")
+    void testZeroDurationThrowsException() {
+        Patient patient = createTestPatient();
+        Doctor doctor = createTestDoctor();
+        assertThrows(IllegalArgumentException.class, () ->
+                new Appointment(1, patient, doctor, LocalDateTime.now(), 0,
+                        AppointmentStatus.SCHEDULED, null));
+    }
+
+    @Test
+    @DisplayName("Appointment rejects negative duration")
+    void testNegativeDurationThrowsException() {
+        Patient patient = createTestPatient();
+        Doctor doctor = createTestDoctor();
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new Appointment(1, patient, doctor, LocalDateTime.now(), -15,
+                        AppointmentStatus.SCHEDULED, null));
     }
 
     @Test
@@ -80,6 +118,7 @@ class AppointmentTest {
         String result = appt.toString();
         assertTrue(result.contains("John Doe"));
         assertTrue(result.contains("Dr. Smith"));
+        assertTrue(result.contains("durationMinutes=30"));
     }
 
     @Test

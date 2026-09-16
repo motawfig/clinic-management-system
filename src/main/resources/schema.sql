@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     patient_id INT NOT NULL,
     doctor_id INT NOT NULL,
     appointment_date_time DATETIME NOT NULL,
+    duration_minutes INT NOT NULL DEFAULT 30,
     status ENUM('SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW') DEFAULT 'SCHEDULED',
     notes TEXT,
     FOREIGN KEY (patient_id) REFERENCES patients(id),
