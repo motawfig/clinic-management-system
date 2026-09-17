@@ -63,8 +63,8 @@ GenericRepository<T, ID>  (interface: save, findById, findAll, update, delete)
     └── MedicalRecordRepository  (+ findByPatientId)
 ```
 
-- All repositories are **interfaces only** in production code
-- `InMemoryAppointmentRepository` is the sole concrete implementation, residing in `src/test/java`
+- All repository contracts are **interfaces** in `com.clinic.repository`
+- At the time of Phase 9, `InMemoryAppointmentRepository` in `src/test/java` was the sole concrete implementation
 
 ---
 
@@ -113,9 +113,22 @@ GenericRepository<T, ID>  (interface: save, findById, findAll, update, delete)
 
 ---
 
-## Recovered Architectural Gaps
+## Historical Architectural Gaps (Phase 9 Baseline)
 
-1. **No production JDBC persistence** — All repositories are interfaces. No concrete JDBC implementations exist in `src/main/java`.
-2. **DatabaseConfig is unreferenced** — `DatabaseConfig.java` and `db.properties` exist but are not called by any service or repository.
-3. **App.java is disconnected** — The entry point creates sample model objects for stdout demonstration. It does not instantiate services, repositories, or wire dependencies.
-4. **Pass-through services lack validation** — `PatientService`, `DoctorService`, and `MedicalRecordService` perform no business validation before delegating to repositories.
+At the time the Phase 9 reverse engineering analysis was performed on the post-refactoring baseline:
+
+1. **No production JDBC persistence** — All repository contracts were interfaces with no concrete JDBC implementations in `src/main/java`.
+2. **DatabaseConfig was unreferenced** — `DatabaseConfig.java` and `db.properties` existed but were not called by any service or repository.
+3. **App.java was unwired** — The entry point created sample model objects for stdout demonstration without assembling the service graph.
+4. **Pass-through services lacked validation** — `PatientService`, `DoctorService`, and `MedicalRecordService` performed no business validation before delegating to repositories.
+
+---
+
+## Post-Analysis Console Runtime Enhancement
+
+Following the Phase 9 analysis, the application entry point was enhanced into an interactive console runner, introducing concrete runtime wiring:
+
+- **Explicit Runtime Wiring in `App.java`:** Rather than remaining a static demonstration script, `App.java` now explicitly instantiates all four services and injects corresponding in-memory repositories (`InMemoryPatientRepository`, `InMemoryDoctorRepository`, `InMemoryAppointmentRepository`, `InMemoryMedicalRecordRepository`).
+- **Preserved Abstraction Boundaries:** The fundamental architectural pattern remains `service → repository interface`. Services still depend exclusively on interfaces in `com.clinic.repository`, completely unaware of the underlying storage mechanism.
+- **In-Memory Runtime Persistence:** The runtime repository implementations (`src/main/java/com/clinic/repository/memory/`) store entities in volatile Java collections. Data persists during the execution session and resets upon exit.
+- **JDBC Persistence Remains Unimplemented:** Concrete JDBC persistence against a live MySQL database remains unbuilt. `DatabaseConfig.java`, `db.properties`, and `schema.sql` remain in place as valid configuration templates for future database connectivity.

@@ -10,10 +10,10 @@
 ## 1. ما هو النظام؟ — What is the system?
 
 **بالعربية:**
-نظام إدارة عيادة أكاديمي مبني بلغة Java 21. يحتوي على نماذج المرضى والأطباء والمواعيد والسجلات الطبية، مع طبقة خدمات وواجهات مستودعات.
+نظام إدارة عيادة أكاديمي مبني بلغة Java 21. يحتوي على نماذج المرضى والأطباء والمواعيد والسجلات الطبية، مع طبقة خدمات وواجهات مستودعات وتطبيق كونسول تفاعلي.
 
 **In English:**
-An academic clinic management system built with Java 21. It contains Patient, Doctor, Appointment, and MedicalRecord models, with a service layer and repository interfaces.
+An academic clinic management system built with Java 21. It contains Patient, Doctor, Appointment, and MedicalRecord models, with a service layer, repository interfaces, and an interactive console runtime.
 
 ---
 
@@ -40,7 +40,7 @@ A Software Modification Request to add appointment conflict detection. It includ
 ## 4. لماذا صيانة كمالية (Perfective)؟ — Why Perfective Maintenance?
 
 **بالعربية:**
-لأن التغيير يضيف وظيفة جديدة (كشف التعارض) لم تكن موجودة أصلاً. النظام كان يعمل قبل التغيير لكنه كان يفتقر إلى حماية سلامة الجدولة. لم يكن هناك خطأ يُصلح (ليست تصحيحية) ولم يكن هناك تغيير في المنصة الخارجية (ليست تكيفية).
+لأن التغيير يضيف وظيفة جديدة (كشف التعارض) لم تكن موجودة أصلاً. النظام كان يعمل قبل التغيير لكنه كان يفتقر إلى حماية سلامة الجدولة. لم يكن هناك خطأ يُصلح (ليست تصحيحية) ولم يكن هناك تغيير في المنصة الخارجية (ليست تكيفية). الخصائص الثانوية: وقائية (Preventive) لمنع مشاكل تكامل البيانات مستقبلاً.
 
 **In English:**
 The change adds new functionality (conflict detection) that did not previously exist. The system worked before but lacked scheduling integrity. There was no bug to fix (not Corrective) and no external platform change (not Adaptive). Secondary characteristics: Preventive — guarding against future data integrity issues.
@@ -118,7 +118,7 @@ Boundary-touching appointments (one ends exactly when another starts) are allowe
 - `conflictsWith` — تصفية الحالة + التداخل
 - `isCurrentAppointment` — استبعاد النفس أثناء التعديل
 
-42/42 اختبار نجحت قبل وبعد إعادة الهيكلة. لم يتغير السلوك.
+42/42 اختبار نجحت قبل وبعد إعادة الهيكلة دون أي تغيير في السلوك.
 
 **In English:**
 Decomposed monolithic conflict logic into cohesive helper methods: `calculateEndTime`, `isBlockingStatus`, `appointmentsOverlap`, `conflictsWith`, `isCurrentAppointment`. 42/42 tests pass before and after. No behavioral change.
@@ -146,18 +146,18 @@ Dynamic slicing was NOT performed.
 ## 12. ما هي الهندسة العكسية (Reverse Engineering)؟
 
 **بالعربية:**
-استرجاع تصميم النظام من الكود المصدري الحالي:
-- الهيكلة الطبقية (خدمات → واجهات مستودعات → تنفيذات)
+استرجاع تصميم النظام من الكود المصدري:
+- الهيكلة الطبقية (خدمات → واجهات مستودعات)
 - نموذج المجال وعلاقاته
 - 10 قواعد عمل (BR-01 إلى BR-10)
-- الفجوات المعمارية (عدم وجود تنفيذات JDBC)
+- توثيق الفجوات المعمارية (غياب تنفيذات JDBC)
 
 **In English:**
 Recovering system design from current source code:
-- Layered architecture (services → repository interfaces → implementations)
+- Layered architecture (services → repository interfaces)
 - Domain model and relationships
 - 10 business rules (BR-01 through BR-10)
-- Architectural gaps (no JDBC implementations)
+- Documented architectural gaps (no JDBC implementations)
 
 ---
 
@@ -169,8 +169,7 @@ Tests run: 42, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
 
-30 اختبار نموذج + 12 اختبار خدمة = 42 اختبار ناجح
-كل معايير القبول (AC-01 إلى AC-08) تم التحقق منها.
+30 اختبار نموذج + 12 اختبار خدمة = 42 اختبار ناجح. كل معايير القبول (AC-01 إلى AC-08) تم التحقق منها كـ PASS.
 
 **In English:**
 30 model tests + 12 service tests = 42 total, all passing. All acceptance criteria (AC-01 through AC-08) verified as PASS.
@@ -180,13 +179,47 @@ BUILD SUCCESS
 ## 14. ما هي القيود المعمارية المعروفة؟ — Known Architecture Limitations
 
 **بالعربية:**
-1. لا توجد تنفيذات JDBC للمستودعات في الكود الإنتاجي — كلها واجهات فقط
-2. `InMemoryAppointmentRepository` موجود فقط في كود الاختبارات
-3. `App.java` لا يربط الخدمات بالمستودعات — يعرض نماذج فقط
-4. `DatabaseConfig` و `schema.sql` موجودان لكن غير مستخدمين من أي خدمة أو مستودع
+1. **لا توجد تنفيذات JDBC:** الكود الإنتاجي لا يتضمن مستودعات متصلة بقاعدة بيانات MySQL؛ واجهات المستودعات في `com.clinic.repository` يتم تطبيقها لتشغيل الكونسول عبر مستودعات داخل الذاكرة (`com.clinic.repository.memory`).
+2. **بيانات الكونسول مؤقتة:** جميع البيانات المدخلة في الكونسول تُخزن في الذاكرة وتُفقد عند إغلاق البرنامج.
+3. **عدم ربط قاعدة البيانات حالياً:** ملف `schema.sql` وأداة `DatabaseConfig` جاهزان ومكتملان نحوياً، ولكنهما غير متصلين ببيئة تشغيل الكونسول الحالية.
+4. **عزل بيئة الاختبار:** مستودع `InMemoryAppointmentRepository` في مجلد `src/test/java` مخصص لاختبارات الوحدة المعزولة.
 
 **In English:**
-1. No JDBC repository implementations in production code — all are interfaces only
-2. `InMemoryAppointmentRepository` exists only in test code
-3. `App.java` does not wire services to repositories — demo output only
-4. `DatabaseConfig` and `schema.sql` exist but are unreferenced by any service or repository
+1. **No JDBC persistence:** Production code does not implement JDBC database repositories; repository interfaces are satisfied at runtime by in-memory repositories (`com.clinic.repository.memory`).
+2. **Volatile console data:** Console runtime data is stored in memory and lost upon program exit.
+3. **Database disconnected from current runtime:** `schema.sql` and `DatabaseConfig` are prepared and valid, but not connected to the current console runner.
+4. **Test double isolation:** `InMemoryAppointmentRepository` under `src/test/java` serves exclusively for isolated automated testing.
+
+---
+
+## 15. كيف نستعرض النظام بشكل حي؟ — How do we demonstrate the system live?
+
+**بالعربية:**
+يتم الاستعراض الحي عبر تطبيق الكونسول بالخطوات التالية:
+1. تشغيل التطبيق عبر: `mvn compile` ثم `java -cp target\classes com.clinic.App`.
+2. استخدام الطبيب (د. خالد - ID 1) والمريض (أحمد علي - ID 1) الموجودين في البيانات التجريبية.
+3. حجز موعد صالح (د. خالد، الساعة 10:00، مدة 30 دقيقة، مجدول) $\rightarrow$ **يُقبل الحجز**.
+4. محاولة حجز موعد متداخل لنفس الطبيب (د. خالد، الساعة 10:15، مدة 30 دقيقة) $\rightarrow$ **يُرفض الحجز** وتظهر رسالة التعارض الناتجة عن `AppointmentConflictException`.
+5. محاولة حجز نفس الوقت (10:15) مع طبيب آخر (د. أمل - ID 2) $\rightarrow$ **يُقبل الحجز** لأن الفحص محدد بجدول الطبيب فقط (Doctor-Scoped).
+6. تجربة موعد ملامس للحدود (د. خالد، الساعة 10:30، مدة 30 دقيقة) $\rightarrow$ **يُقبل الحجز** لأن تلامس الحدود مسموح في الفترات نصف المفتوحة.
+7. توضيح أن `AppointmentService` هو من ينفذ هذا الفحص بالكامل، بينما `App.java` يمثل واجهة مستخدم فقط.
+
+**In English:**
+Live demonstration follows these interactive steps:
+1. Run the console: `mvn compile` then `java -cp target\classes com.clinic.App`.
+2. Use the seeded patient (Ahmed Ali - ID 1) and doctor (Dr. Khaled - ID 1).
+3. Schedule a valid appointment: Dr. Khaled, 10:00, 30 min, SCHEDULED $\rightarrow$ **Accepted**.
+4. Attempt an overlapping appointment for the same doctor: Dr. Khaled, 10:15, 30 min $\rightarrow$ **Rejected** with conflict message from `AppointmentConflictException`.
+5. Attempt the same overlapping time with a different doctor: Dr. Amal, 10:15, 30 min $\rightarrow$ **Accepted** (doctor-scoped check).
+6. Attempt boundary-touching booking: Dr. Khaled, 10:30, 30 min $\rightarrow$ **Accepted** (boundary rule).
+7. Explain that `AppointmentService` performs the entire validation; `App.java` is strictly the presentation layer.
+
+---
+
+## 16. هل النظام متصل بقاعدة بيانات MySQL؟ — Is the system connected to MySQL?
+
+**بالعربية:**
+**لا.** تطبيق الكونسول التفاعلي الحالي يعمل باستخدام مستودعات داخل الذاكرة (In-Memory Repositories) في الحزمة `com.clinic.repository.memory`. مخطط قاعدة البيانات `schema.sql` وإعدادات الاتصال في `DatabaseConfig` و `db.properties` موجودة ومصممة وفق أفضل الممارسات، لكن ربط المستودعات الفعلية عبر JDBC يمثل خطوة تطويرية مستقبلية.
+
+**In English:**
+**No.** The current runnable console uses in-memory repository implementations in `com.clinic.repository.memory`. The MySQL schema (`schema.sql`) and connection configuration (`DatabaseConfig`, `db.properties`) exist and are structurally verified, but concrete JDBC persistence has not yet been connected to the runtime.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document records the complete software maintenance lifecycle applied to the Clinic Management System for change request **SMR-001 — Appointment Conflict Detection**.
+This document records the complete software maintenance lifecycle applied to the Clinic Management System for change request **SMR-001 — Appointment Conflict Detection**, along with the post-maintenance console demonstration layer.
 
 ---
 
@@ -15,7 +15,7 @@ The system existed as a foundational clinic domain model with:
 - Repository interfaces: `GenericRepository<T, ID>` and domain-specific extensions
 - Service layer: four services with pass-through delegation
 - Infrastructure: `DatabaseConfig`, `db.properties`, `schema.sql`
-- Entry point: `App.java` (sample model instantiation only)
+- Entry point: `App.java` (sample model instantiation only at that stage)
 
 No appointment conflict detection or duration support existed.
 
@@ -159,12 +159,12 @@ Static slicing was performed. Dynamic slicing was not performed.
 
 ### Phase 9 — Reverse Engineering
 
-Design recovery from the implemented source code:
+Design recovery from the implemented source code at the post-refactoring stage:
 
-- Reconstructed the layered architecture (service → repository interface → implementation)
+- Reconstructed the layered architecture (service → repository interface)
 - Recovered 10 discrete business rules (BR-01 through BR-10)
 - Identified domain model relationships and multiplicities
-- Documented architectural gaps (missing JDBC implementations, unwired `App.java`)
+- Documented architectural state at that phase (unwired demo entry point, repository interfaces without production implementations)
 - Distinguished domain-model invariants from service-level preconditions
 
 ---
@@ -179,3 +179,19 @@ Repository preparation for GitHub publication:
 - `docs/` directory with 7 documentation files
 - Bilingual Arabic/English JavaDoc comments in source code
 - Final regression verification: 42/42 tests, BUILD SUCCESS
+
+---
+
+## Post-Maintenance Console Demonstration Layer
+
+Following the formal maintenance phases, an interactive console demonstration layer was added to make the system runnable live:
+
+- **Interactive CLI Runner:** `App.java` was enhanced to provide an interactive menu allowing real-time execution of clinic workflows (patient/doctor management, scheduling, updates, cancellations).
+- **Runtime In-Memory Repositories:** Implemented `InMemoryPatientRepository`, `InMemoryDoctorRepository`, `InMemoryAppointmentRepository`, and `InMemoryMedicalRecordRepository` in `src/main/java/com/clinic/repository/memory/` to back the console runtime.
+- **Service Layer Wiring:** `App.java` wires each service to its corresponding in-memory repository, satisfying the `GenericRepository` contracts.
+
+### Scope & Architectural Boundaries of this Enhancement:
+1. **Does NOT alter SMR-001 business rules:** All conflict detection rules, interval formulas, and status classifications remain identical.
+2. **Does NOT replace or duplicate `AppointmentService` logic:** `App.java` delegates all scheduling validation strictly to `AppointmentService`.
+3. **Does NOT add JDBC persistence:** The console runtime uses in-memory collections that reset upon program exit. Concrete JDBC persistence remains a future evolution point.
+4. **Exists exclusively to demonstrate the maintained behavior interactively.**

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Clinic Management System follows a **Layered Architecture (N-Tier)** pattern with structural adherence to the **Dependency Inversion Principle (DIP)**. Services depend on repository interfaces rather than concrete implementations.
+The Clinic Management System follows a **Layered Architecture (N-Tier)** pattern with structural adherence to the **Dependency Inversion Principle (DIP)**. Services depend exclusively on repository interfaces rather than concrete data access implementations.
 
 ---
 
@@ -10,13 +10,12 @@ The Clinic Management System follows a **Layered Architecture (N-Tier)** pattern
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                     APPLICATION / ENTRY LAYER                                │
+│                    INTERACTIVE CONSOLE RUNTIME (App.java)                    │
 │                                                                              │
-│  App.java (Demo harness — prints sample models to stdout)                   │
-│  NOTE: Does NOT instantiate services or repositories.                       │
-│        Does NOT wire the runtime dependency graph.                          │
+│  Wires the service layer to in-memory repositories for interactive demo.     │
+│  Provides 10-option CLI menu; loads seed data into memory.                   │
 └──────────────────────────────────────┬───────────────────────────────────────┘
-                                       : (Conceptual / not wired at runtime)
+                                       │ (instantiates & injects)
                                        v
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                     SERVICE LAYER (Parallel, Independent)                    │
@@ -39,24 +38,59 @@ The Clinic Management System follows a **Layered Architecture (N-Tier)** pattern
 │    └── MedicalRecordRepository  (+ findByPatientId)                        │
 └──────────────┬───────────────────────────────────┬───────────────────────────┘
                │                                   │
-   (Production)│                       (Test scope) │
-┌──────────────▼──────────────┐  ┌─────────────────▼──────────────────────────┐
-│  JDBC Persistence Layer     │  │  Test Infrastructure                       │
-│                             │  │                                            │
-│  [ NOT IMPLEMENTED ]        │  │  InMemoryAppointmentRepository             │
-│                             │  │  (LinkedHashMap-backed test double)        │
-└─────────────────────────────┘  └────────────────────────────────────────────┘
+  (Console Demo Runtime)               (Automated Test Scope)
+┌──────────────▼──────────────────────────┐  ┌─────▼──────────────────────────┐
+│ In-Memory Demo Repositories             │  │ Test Infrastructure            │
+│ (src/main/.../repository/memory/)       │  │ (src/test/.../repository/)     │
+│                                         │  │                                │
+│ • InMemoryPatientRepository             │  │ • InMemoryAppointmentRepository│
+│ • InMemoryDoctorRepository              │  │   (LinkedHashMap double for    │
+│ • InMemoryAppointmentRepository         │  │    isolated unit testing)      │
+│ • InMemoryMedicalRecordRepository       │  └────────────────────────────────┘
+│                                         │
+│ (In-memory collections; non-persistent) │
+└─────────────────────────────────────────┘
                :
-               : (Prepared but not wired)
+               : (Prepared but not connected to current runtime)
 ┌──────────────▼──────────────────────────────────────────────────────────────┐
 │                     INFRASTRUCTURE / CONFIGURATION                          │
 │                                                                              │
 │  DatabaseConfig.java   db.properties   schema.sql                           │
 │  (Connection utility)  (JDBC template)  (MySQL DDL)                         │
 │                                                                              │
-│  NOTE: These exist but are not referenced by any production service         │
-│        or repository class.                                                  │
+│  JDBC Production Persistence: NOT IMPLEMENTED                               │
+│  No persistent database connection is active in the console runtime.        │
 └──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Runtime Execution Flow
+
+When the interactive console application executes:
+
+```
+App.java (Console Entry Point)
+   │
+   ├── 1. Instantiates In-Memory Repositories (com.clinic.repository.memory.*)
+   │        ├── InMemoryPatientRepository
+   │        ├── InMemoryDoctorRepository
+   │        ├── InMemoryAppointmentRepository
+   │        └── InMemoryMedicalRecordRepository
+   │
+   ├── 2. Injects Repositories into Parallel Services (com.clinic.service.*)
+   │        ├── new PatientService(inMemoryPatientRepo)
+   │        ├── new DoctorService(inMemoryDoctorRepo)
+   │        ├── new AppointmentService(inMemoryApptRepo)
+   │        └── new MedicalRecordService(inMemoryMedRecordRepo)
+   │
+   ├── 3. Seeds Initial Demo Data (2 patients, 2 doctors)
+   │
+   └── 4. Renders Interactive Menu & Delegates User Actions to Services
+            └── e.g., scheduleAppointment() calls AppointmentService
+                      └── AppointmentService executes SMR-001 conflict check
+                                ├── Overlap detected  → Throws AppointmentConflictException
+                                └── No overlap        → Saves to in-memory collection
 ```
 
 ---
@@ -92,36 +126,36 @@ Each service is completely independent. No service imports, references, or depen
 GenericRepository<T, ID>  (interface)
     │
     ├── PatientRepository       (interface — adds findByName)
+    │     └── InMemoryPatientRepository (src/main/java/com/clinic/repository/memory/)
+    │
     ├── DoctorRepository        (interface — adds findBySpecialization)
+    │     └── InMemoryDoctorRepository (src/main/java/com/clinic/repository/memory/)
+    │
     ├── AppointmentRepository   (interface — adds findByPatientId, findByDoctorId, findByDate)
+    │     ├── InMemoryAppointmentRepository (src/main/java/com/clinic/repository/memory/)
+    │     └── InMemoryAppointmentRepository (src/test/java/com/clinic/repository/ [test double])
+    │
     └── MedicalRecordRepository (interface — adds findByPatientId)
-                                         │
-                                         └── InMemoryAppointmentRepository (test double, src/test/java)
+          └── InMemoryMedicalRecordRepository (src/main/java/com/clinic/repository/memory/)
 ```
 
 ---
 
-## Important Architectural Limitations
+## Architectural Distinctions & Known Limitations
 
-### 1. No Production JDBC Repository Implementations
+To maintain rigorous architectural accuracy, the system distinguishes clearly between the following tiers:
 
-All five repository interfaces (`GenericRepository`, `PatientRepository`, `DoctorRepository`, `AppointmentRepository`, `MedicalRecordRepository`) exist **only as interfaces** in `src/main/java`. No concrete JDBC implementations exist in the production source tree.
+### 1. Current Console Runtime (Implemented)
+`App.java` now assembles the console runtime by wiring the service layer to in-memory repository implementations (`src/main/java/com/clinic/repository/memory/`). This enables live interactive demonstration of patient/doctor management, appointment scheduling, and SMR-001 conflict detection. All data resides in volatile in-memory collections and resets upon program exit.
 
-### 2. DatabaseConfig and Schema Exist but Are Not Wired
+### 2. JDBC Production Persistence (Not Implemented)
+No JDBC production persistence is implemented. All repository abstractions exist strictly as Java interfaces in `com.clinic.repository`. No concrete classes implement SQL queries or JDBC statements in the production source tree.
 
-`DatabaseConfig.java` loads `db.properties` and can provide a JDBC `Connection`. `schema.sql` defines a valid MySQL schema. However, no production class in `com.clinic.service` or `com.clinic.repository` references `DatabaseConfig` or executes SQL against the schema.
+### 3. Database Schema and Configuration (Prepared but Disconnected)
+`DatabaseConfig.java` loads `db.properties` and can supply a JDBC `Connection`. `schema.sql` defines the relational DDL including the `duration_minutes` column. However, no production service or repository references `DatabaseConfig`, and no persistent database connection is active during application runtime.
 
-### 3. App.java Does Not Assemble the Runtime Service Graph
-
-`App.java` instantiates domain model objects directly using `new` and prints them to `System.out`. It does not:
-- Create any service instances
-- Create any repository instances
-- Wire dependencies between layers
-- Execute any business workflows
-
-### 4. InMemoryAppointmentRepository Is Test-Only
-
-The only concrete repository implementation in the entire codebase is `InMemoryAppointmentRepository`, which resides in `src/test/java` and uses a `LinkedHashMap` for in-memory storage during test execution.
+### 4. Test Double Isolation
+`src/test/java/com/clinic/repository/InMemoryAppointmentRepository.java` serves as a dedicated test double for automated unit and service testing, ensuring tests run isolated from the console runtime state and external databases.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Clinic Management System follows a standard Maven project layout with a layered Java architecture.
+The Clinic Management System follows a standard Maven project layout with a layered Java architecture adhering to the Dependency Inversion Principle.
 
 ---
 
@@ -11,7 +11,7 @@ The Clinic Management System follows a standard Maven project layout with a laye
 ```
 clinic-management-system/
 ├── pom.xml                                          Build configuration
-├── README.md                                        Project overview
+├── README.md                                        Project overview and console guide
 ├── CHANGELOG.md                                     Change history
 ├── docs/                                            Project documentation
 │   ├── PROJECT_STRUCTURE.md                         This file
@@ -24,7 +24,7 @@ clinic-management-system/
 └── src/
     ├── main/
     │   ├── java/com/clinic/
-    │   │   ├── App.java                             Application entry point (demo harness)
+    │   │   ├── App.java                             Interactive console runtime entry point
     │   │   ├── exception/
     │   │   │   └── AppointmentConflictException.java  Domain exception for calendar collisions
     │   │   ├── model/
@@ -39,7 +39,12 @@ clinic-management-system/
     │   │   │   ├── AppointmentRepository.java       Appointment data access interface
     │   │   │   ├── DoctorRepository.java            Doctor data access interface
     │   │   │   ├── MedicalRecordRepository.java     Medical record data access interface
-    │   │   │   └── PatientRepository.java           Patient data access interface
+    │   │   │   ├── PatientRepository.java           Patient data access interface
+    │   │   │   └── memory/                          In-memory runtime demonstration repositories
+    │   │   │       ├── InMemoryAppointmentRepository.java
+    │   │   │       ├── InMemoryDoctorRepository.java
+    │   │   │       ├── InMemoryMedicalRecordRepository.java
+    │   │   │       └── InMemoryPatientRepository.java
     │   │   ├── service/
     │   │   │   ├── AppointmentService.java          Conflict detection + scheduling (SMR-001)
     │   │   │   ├── DoctorService.java               Pass-through doctor operations
@@ -57,7 +62,7 @@ clinic-management-system/
         │   ├── MedicalRecordTest.java               6 tests — medical record invariants
         │   └── PatientTest.java                     8 tests — patient invariants
         ├── repository/
-        │   └── InMemoryAppointmentRepository.java   Test double (LinkedHashMap-backed)
+        │   └── InMemoryAppointmentRepository.java   Test double for isolated service testing
         └── service/
             └── AppointmentServiceTest.java          12 tests — conflict detection and scheduling
 ```
@@ -68,7 +73,7 @@ clinic-management-system/
 
 ### `com.clinic` (Root)
 
-Contains `App.java`, the application entry point. Currently serves as a demonstration harness that instantiates sample domain models and prints them to stdout. It does not assemble or wire the service-repository object graph.
+Contains `App.java`, the interactive console application entry point. `App.java` assembles the console runtime by wiring the service layer (`PatientService`, `DoctorService`, `AppointmentService`, `MedicalRecordService`) to in-memory repository implementations, loads initial seed data, and renders a 10-option interactive menu for live operation.
 
 ### `com.clinic.model`
 
@@ -91,7 +96,19 @@ Data access interfaces following the Repository pattern with Dependency Inversio
 - **`DoctorRepository`** — extends generic; adds `findBySpecialization`
 - **`MedicalRecordRepository`** — extends generic; adds `findByPatientId`
 
-**Note:** All repositories in `src/main/java` are interfaces only. No production JDBC implementations exist.
+**Persistence Status:** All contracts under `com.clinic.repository` are pure Java interfaces. No concrete JDBC production persistence is implemented.
+
+### `com.clinic.repository.memory`
+
+Runtime demonstration repository implementations. These classes satisfy the repository interfaces using in-memory Java collections (`LinkedHashMap`, `ConcurrentHashMap`, or `HashMap` with atomic ID generators):
+
+- **`InMemoryPatientRepository`** — implements `PatientRepository` for console runtime
+- **`InMemoryDoctorRepository`** — implements `DoctorRepository` for console runtime
+- **`InMemoryAppointmentRepository`** — implements `AppointmentRepository` for console runtime (supports `findByDoctorId`, `findByPatientId`, `findByDate`)
+- **`InMemoryMedicalRecordRepository`** — implements `MedicalRecordRepository` for console runtime
+
+> [!NOTE]
+> These are runtime demonstration repositories using in-memory collections. They do **not** provide database persistence, and all data is lost when the program terminates.
 
 ### `com.clinic.service`
 
@@ -112,7 +129,7 @@ Domain-specific exceptions.
 
 Infrastructure utilities.
 
-- **`DatabaseConfig`** — static utility that loads `db.properties` and provides `getConnection()`. Currently unreferenced by any production class.
+- **`DatabaseConfig`** — static utility that loads `db.properties` and provides `getConnection()`. Prepared for future database integration; not connected to the current console runtime.
 
 ### `src/main/resources`
 
@@ -127,9 +144,11 @@ Infrastructure utilities.
 
 - `scheduleAppointment()` — validates conflict before `save()`
 - `updateAppointment()` — validates conflict (with self-exclusion) before `update()`
-- `ensureNoAppointmentConflict()` — central conflict detection path
-- `validateAppointmentForConflictCheck()` — precondition validation
-- `isCurrentAppointment()` — self-exclusion predicate
+- `ensureNoAppointmentConflictForScheduling()` — prepares conflict check for new bookings
+- `ensureNoAppointmentConflictForUpdate()` — prepares conflict check for modifications with self-exclusion
+- `ensureNoAppointmentConflict()` — central conflict detection coordination
+- `validateAppointmentForConflictCheck()` — precondition validation (non-null appointment, doctor, datetime)
+- `isCurrentAppointment()` — ID-based self-exclusion predicate
 - `conflictsWith()` — status filter + overlap comparator
 - `calculateEndTime()` — `dateTime.plusMinutes(durationMinutes)`
 - `isBlockingStatus()` — identifies `SCHEDULED` and `CONFIRMED`
