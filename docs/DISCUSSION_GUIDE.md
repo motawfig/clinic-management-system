@@ -3,7 +3,7 @@
 ## المؤلفون — Authors
 
 - المهندس محمد أبوهادي — Engineer Mohammed Abu Hadi
-- المهندس حازم البقلي — Engineer Hazem Al-Baqli
+- المهندس حازم البلقي — Engineer Hazem Al-Balqi
 
 ---
 
